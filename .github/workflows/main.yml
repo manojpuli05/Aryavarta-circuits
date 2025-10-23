@@ -1,40 +1,98 @@
-name: CI/CD for Static Website
+name: CI/CD Pipeline - Build and Deploy
 
 on:
   push:
+    # Trigger the workflow on pushes to the main branch
     branches:
-      - main   # Trigger on push to main branch
+      - main
+  pull_request:
+    # Trigger on pull requests to the main branch
+    branches:
+      - main
+
+# Define environment variables used throughout the workflow
+env:
+  # Use GitHub Container Registry (GHCR) as the target registry
+  REGISTRY: ghcr.io
+  # The image name will be the repository name
+  IMAGE_NAME: ${{ github.repository }} 
+  # This tag is used in the deployment step, matching the tag in your docker-compose.yml
+  DOCKER_IMAGE_TAG: my-static-web-app:latest 
 
 jobs:
+  # ----------------------------------------------------------------------
+  # 1. CI Job: Build and Push Docker Image
+  # ----------------------------------------------------------------------
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    # Permissions required to read code and write to the package registry (GHCR)
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          # Use GHCR
+          registry: ${{ env.REGISTRY }}
+          # Use the default GitHub token for authentication
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker image
+        uses: docker/build-and-push-action@v5
+        with:
+          context: . # Use the current directory as build context (where Dockerfile is)
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_TAG }}
+          # Note: The image will be tagged as ghcr.io/<owner>/my-static-web-app:latest 
+          # You should update your docker-compose.yml to use this full path:
+          # image: ghcr.io/<owner>/my-static-web-app:latest 
+
+  # ----------------------------------------------------------------------
+  # 2. CD Job: Deploy to Remote Server
+  # ----------------------------------------------------------------------
   deploy:
+    # This job only runs after the 'build-and-push' job is successful
+    needs: build-and-push 
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository with full history
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Important to prevent Git errors (exit code 128)
+      - name: Checkout repository (Needed to copy docker-compose.yml)
+        uses: actions/checkout@v4
 
-      # Step 2: Install Node (optional, if you have build step)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
         with:
-          node-version: '20'
+          # Use GitHub Secrets for secure connection information
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22 # Default SSH port, change if necessary
+          
+          # Commands to execute on the remote server
+          script: |
+            # 1. Ensure the deployment directory exists (change /path/to/app to your target directory)
+            # The docker-compose.yml and other files should be here
+            REMOTE_DIR=/path/to/your/app/
+            mkdir -p $REMOTE_DIR
+            cd $REMOTE_DIR
 
-      # Step 3: (Optional) Build step for static site
-      # Uncomment if using a build tool (like npm run build)
-      # - name: Build Site
-      #   run: |
-      #     npm install
-      #     npm run build
+            # 2. Log in to GHCR on the remote server (using a Personal Access Token with package:read scope)
+            echo "${{ secrets.GHCR_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            
+            # 3. Pull the latest image
+            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_TAG }}
 
-      # Step 4: Deploy to GitHub Pages
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./           # Root folder for your HTML, CSS, JS
-          publish_branch: gh-pages  # Branch GitHub Pages will use
-          force_orphan: true        # Creates branch if it doesn't exist
-          commit_message: "Deploy static site via GitHub Actions"
+            # 4. Restart the containers using the existing docker-compose.yml file
+            # This assumes you have copied your docker-compose.yml to the REMOTE_DIR 
+            # and that it's updated with the full GHCR image path.
+            docker-compose down 
+            docker-compose up -d --force-recreate
+            
+            echo "Deployment complete for ${{ env.DOCKER_IMAGE_TAG }}"
