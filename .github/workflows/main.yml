@@ -1,6 +1,5 @@
 name: Deploy Website
 
-# Trigger the workflow on push to main branch
 on:
   push:
     branches:
@@ -11,15 +10,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Important for GitHub Pages
+          fetch-depth: 0   # ensures full history
 
-      # Step 2: Deploy to GitHub Pages
+      # Step 2: Set Git user (important for gh-pages commits)
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Step 3: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./   # Your website root folder
+          publish_dir: ./   # your website root folder
+          force_orphan: true  # create branch if not exists
