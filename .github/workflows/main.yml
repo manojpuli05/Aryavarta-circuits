@@ -1,101 +1,31 @@
-name: CI/CD Pipeline - Build and Deploy
+name: Deploy Website
 
+# Trigger the workflow on push to main branch
 on:
   push:
     branches:
       - main
 
-# Define global environment variables
-env:
-  REGISTRY: ghcr.io
-  DOCKER_IMAGE_TAG: aroy-web-app:latest 
-  REMOTE_DIR: /var/www/aroy-app/
-  # Map secrets to explicit env variables for the final script steps
-  REMOTE_HOST: ${{ secrets.SSH_HOST }}
-  REMOTE_USER: ${{ secrets.SSH_USERNAME }}
-
 jobs:
-  # ----------------------------------------------------------------------
-  # 1. CI Job: Build and Push Docker Image
-  # ----------------------------------------------------------------------
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-      packages: write
-      
+
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3 
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: actions/checkout@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Important for GitHub Pages
 
-      - name: Build and Push Docker image
-        uses: docker/build-push-action@v5 
+      # Step 2: Set up Node.js (optional if using tools, not needed for plain HTML/CSS/JS)
+      # - name: Setup Node.js
+      #   uses: actions/setup-node@v3
+      #   with:
+      #     node-version: '18'
+
+      # Step 3: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v7
         with:
-          context: . 
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ----------------------------------------------------------------------
-  # 2. CD Job: Deploy to Remote Server (Using Native SSH)
-  # ----------------------------------------------------------------------
-  deploy:
-    needs: build-and-push 
-    runs-on: ubuntu-latest
-    
-    permissions:
-      contents: read
-      packages: read
-
-    steps:
-      - name: Checkout repository (Required for local files)
-        uses: actions/checkout@v4
-      
-      # Step A: Start SSH agent and add the private key
-      - name: Install SSH Key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          # This step is failing because the secret below is empty/missing!
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
-
-      # Step B: Securely copy the docker-compose.yml file (uses scp)
-      - name: Copy deployment file (docker-compose.yml)
-        run: |
-          # 1. Ensure remote directory exists
-          ssh -o StrictHostKeyChecking=no ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }} "mkdir -p ${{ env.REMOTE_DIR }}"
-          # 2. Copy file to remote server
-          scp -o StrictHostKeyChecking=no docker-compose.yml ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}:${{ env.REMOTE_DIR }}
-
-      # Step C: Execute Deployment Commands via SSH
-      - name: Run Deployment Script on Remote Server
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }} "
-            # Set image path variable
-            IMAGE_PATH=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_TAG }}
-
-            # Move to the deployment directory
-            cd ${{ env.REMOTE_DIR }}
-
-            # Log in to GHCR 
-            echo \"${{ secrets.GHCR_PAT }}\" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
-
-            echo 'Pulling image: \$IMAGE_PATH'
-            docker pull \$IMAGE_PATH
-
-            # Restart the containers
-            docker-compose up -d --force-recreate
-            
-            echo 'Deployment successful on remote server.'
-          "
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./   # Your website root folder
