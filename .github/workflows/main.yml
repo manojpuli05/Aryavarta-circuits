@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Step 2: Setup Git (required for gh-pages commits)
+      # Step 2: Setup Git
       - name: Setup Git
         run: |
           git config --global user.name "github-actions[bot]"
@@ -27,6 +27,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./       # root folder of your site
-          force_orphan: true    # create gh-pages branch if not exists
-          keep_files: false     # remove old files before deploying
+          publish_dir: ./           # your website root folder
+          branch: gh-pages          # target branch for GitHub Pages
+          force_orphan: true        # create gh-pages branch if missing
+          keep_files: false         # remove old files before deploying
