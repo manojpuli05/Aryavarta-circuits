@@ -1,33 +1,52 @@
-name: Deploy Website
+name: Deploy Static Content to GitHub Pages
 
+# Controls when the workflow should run
 on:
+  # Triggers the workflow on push events to the main branch
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
+# Sets permissions granted to the GITHUB_TOKEN
+# This is required for deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build-and-deploy:
+  # This job handles the deployment
+  deploy:
+    # Use a standard Ubuntu runner
     runs-on: ubuntu-latest
+    
+    # Environment name, required for GitHub Pages deployment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      # Step 1: Checkout repository with full history
+      # Step 1: Checks-out your repository under $GITHUB_WORKSPACE
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        
+      # Step 2: Set up a node environment (required by the actions/setup-pages action)
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        
+      # Step 3: Upload the entire project directory as an artifact
+      # Since your site is pure HTML/CSS/JS, the source files are the final build output.
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          fetch-depth: 0
-
-      # Step 2: Setup Git
-      - name: Setup Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      # Step 3: Deploy to GitHub Pages
+          # This specifies the directory to upload. 
+          # Since your Aroy.html, script.js, and sty.css are in the root, we use '.'
+          path: '.'
+          
+      # Step 4: Deploy the uploaded artifact to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./           # your website root folder
-          publish_branch: gh-pages  # correct input name for target branch
-          force_orphan: true        # create gh-pages branch if missing
-          keep_files: false         # remove old files before deploying
+        id: deployment
+        uses: actions/deploy-pages@v4
