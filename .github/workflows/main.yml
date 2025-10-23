@@ -3,20 +3,20 @@ name: Deploy Static Site
 on:
   push:
     branches:
-      - main  # Deploy only when main branch is updated
+      - main  # Deploy only when the main branch is updated
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Check out the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
       # Step 2: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v6
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages       # branch to deploy
