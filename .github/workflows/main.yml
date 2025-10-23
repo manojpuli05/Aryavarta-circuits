@@ -10,24 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository with full history
+      # Step 1: Checkout the repository with full history
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # important for gh-pages deployment
+          fetch-depth: 0  # crucial to fix git exit code 128
 
-      # Step 2: Setup Node (optional if you have a build step)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      # Step 3: Deploy to GitHub Pages
+      # Step 2: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./        # deploy root directory
-          force_orphan: true
+          publish_branch: gh-pages    # Branch for GitHub Pages
+          publish_dir: ./             # Folder to deploy (root)
+          force_orphan: true          # Creates branch if it doesn't exist
           commit_message: "Deploy static site from GitHub Actions"
