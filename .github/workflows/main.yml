@@ -1,6 +1,5 @@
 name: CI/CD for Static Website
 
-# Trigger workflow on push to main branch
 on:
   push:
     branches:
@@ -11,27 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js (optional if you have JS build)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      # Step 3: Install dependencies (if using any package, optional)
-      - name: Install dependencies
-        run: npm install || echo "No dependencies"
-
-      # Step 4: Build project (if using a build step, optional)
-      - name: Build
-        run: npm run build || echo "No build step"
-
-      # Step 5: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v6
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
           publish_dir: ./  # Or './dist' if you have a build folder
