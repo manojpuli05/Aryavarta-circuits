@@ -3,7 +3,7 @@ name: CI/CD for Static Website
 on:
   push:
     branches:
-      - main
+      - main   # Trigger on push to main branch
 
 jobs:
   deploy:
@@ -14,14 +14,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # crucial to fix git exit code 128
+          fetch-depth: 0  # Important to prevent Git errors (exit code 128)
 
-      # Step 2: Deploy to GitHub Pages
+      # Step 2: Install Node (optional, if you have build step)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # Step 3: (Optional) Build step for static site
+      # Uncomment if using a build tool (like npm run build)
+      # - name: Build Site
+      #   run: |
+      #     npm install
+      #     npm run build
+
+      # Step 4: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages    # Branch for GitHub Pages
-          publish_dir: ./             # Folder to deploy (root)
-          force_orphan: true          # Creates branch if it doesn't exist
-          commit_message: "Deploy static site from GitHub Actions"
+          publish_dir: ./           # Root folder for your HTML, CSS, JS
+          publish_branch: gh-pages  # Branch GitHub Pages will use
+          force_orphan: true        # Creates branch if it doesn't exist
+          commit_message: "Deploy static site via GitHub Actions"
