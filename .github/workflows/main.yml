@@ -3,22 +3,20 @@ name: Deploy Static Site
 on:
   push:
     branches:
-      - main  # Deploy only when the main branch is updated
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages       # branch to deploy
-          publish_dir: ./                # folder containing index.html
-          force_orphan: true             # ensures clean branch
+          publish_branch: gh-pages
+          publish_dir: ./
+          force_orphan: true
