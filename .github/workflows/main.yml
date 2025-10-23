@@ -1,83 +1,39 @@
-name: Static Site CI/CD to GitHub Pages
+name: CI/CD for Static Website
 
-# 1. Configuration: Set the directory where your package.json, code, etc. lives
-# 💡 IMPORTANT: CHANGE THIS TO YOUR ACTUAL SUBFOLDER NAME (e.g., 'frontend', 'client')
-env:
-  PROJECT_ROOT: YOUR_PROJECT_FOLDER 
-  BUILD_OUTPUT_DIR: dist
-  
-# 2. Trigger: Run on pushes to the 'main' branch and manually
+# Trigger workflow on push to main branch
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
-# --- CI Job: Linting, Testing, and Building (Verification Stage) ---
 jobs:
-  ci:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Setup Node.js (optional if you use npm tools)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '20'
 
-      # 3. FIX: Install dependencies 
-      # The 'working-directory' tells the runner where the package.json is.
+      # Step 3: Install dependencies (optional if you use any build tools)
       - name: Install dependencies
         run: npm install
-        working-directory: ${{ env.PROJECT_ROOT }}
+        working-directory: ./ # change if package.json is in a subfolder
 
-      # 4. FIX: Run Linting (Optional)
-      - name: Run Linting
-        run: npm run lint || true 
-        working-directory: ${{ env.PROJECT_ROOT }}
-
-      # 5. FIX: Run Tests (Optional)
-      - name: Run Tests
-        run: npm test || true 
-        working-directory: ${{ env.PROJECT_ROOT }}
-
-      # 6. FIX: Build Step (If you use a bundler)
-      - name: Build project (if needed)
+      # Step 4: Build the project (optional)
+      - name: Build project
         run: npm run build
-        working-directory: ${{ env.PROJECT_ROOT }}
-        
-# ------------------------------------------------------------------
-# --- CD Job: Deployment to GitHub Pages ---
-  deploy:
-    # 7. Dependency Connection: Only runs if the 'ci' job succeeds
-    needs: ci
-    runs-on: ubuntu-latest
+        working-directory: ./ # change if your build folder differs
 
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      # 8. Upload Artifact
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # 🔑 CRITICAL PATH: The path must point to the folder *inside* the project folder 
-          # that contains the final static files (e.g., frontend/dist)
-          path: ${{ env.PROJECT_ROOT }}/${{ env.BUILD_OUTPUT_DIR }} 
-
-      # 9. Deploy to GitHub Pages
+      # Step 5: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./ # change to ./dist or ./build if using a build folder
