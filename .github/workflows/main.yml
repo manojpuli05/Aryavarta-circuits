@@ -10,7 +10,7 @@ env:
   REGISTRY: ghcr.io
   DOCKER_IMAGE_TAG: aroy-web-app:latest 
   REMOTE_DIR: /var/www/aroy-app/
-  # We will use these secrets directly in the script below
+  # Map secrets to explicit env variables for the final script steps
   REMOTE_HOST: ${{ secrets.SSH_HOST }}
   REMOTE_USER: ${{ secrets.SSH_USERNAME }}
 
@@ -63,14 +63,14 @@ jobs:
       - name: Checkout repository (Required for local files)
         uses: actions/checkout@v4
       
-      # Step A: Start SSH agent and add the private key 🔑
-      # This replaces the 'appleboy/ssh-action' key setup for reliable host access.
+      # Step A: Start SSH agent and add the private key
       - name: Install SSH Key
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # This step is failing because the secret below is empty/missing!
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }} 
 
-      # Step B: Securely copy the docker-compose.yml file (using scp via ssh-agent)
+      # Step B: Securely copy the docker-compose.yml file (uses scp)
       - name: Copy deployment file (docker-compose.yml)
         run: |
           # 1. Ensure remote directory exists
@@ -89,9 +89,9 @@ jobs:
             cd ${{ env.REMOTE_DIR }}
 
             # Log in to GHCR 
-            echo "${{ secrets.GHCR_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            echo \"${{ secrets.GHCR_PAT }}\" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
-            echo 'Pulling image: $IMAGE_PATH'
+            echo 'Pulling image: \$IMAGE_PATH'
             docker pull \$IMAGE_PATH
 
             # Restart the containers
