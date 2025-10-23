@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository
+      # Step 1: Checkout repository with full history
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0   # ensures full history
+          fetch-depth: 0
 
-      # Step 2: Set Git user (important for gh-pages commits)
+      # Step 2: Setup Git (required for gh-pages commits)
       - name: Setup Git
         run: |
           git config --global user.name "github-actions[bot]"
@@ -27,5 +27,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./   # your website root folder
-          force_orphan: true  # create branch if not exists
+          publish_dir: ./       # root folder of your site
+          force_orphan: true    # create gh-pages branch if not exists
+          keep_files: false     # remove old files before deploying
