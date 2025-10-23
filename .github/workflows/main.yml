@@ -1,39 +1,24 @@
-name: CI/CD for Static Website
+name: Deploy Static Site
 
-# Trigger workflow on push to main branch
 on:
   push:
     branches:
-      - main
+      - main  # Deploy only when main branch is updated
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       # Step 1: Checkout the repository
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Setup Node.js (optional if you use npm tools)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
-      # Step 3: Install dependencies (optional if you use any build tools)
-      - name: Install dependencies
-        run: npm install
-        working-directory: ./ # change if package.json is in a subfolder
-
-      # Step 4: Build the project (optional)
-      - name: Build project
-        run: npm run build
-        working-directory: ./ # change if your build folder differs
-
-      # Step 5: Deploy to GitHub Pages
+      # Step 2: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./ # change to ./dist or ./build if using a build folder
+          publish_branch: gh-pages       # branch to deploy
+          publish_dir: ./                # folder containing index.html
+          force_orphan: true             # ensures clean branch
