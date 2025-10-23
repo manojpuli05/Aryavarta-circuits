@@ -1,21 +1,26 @@
 name: CI/CD for Static Website
 
+# Trigger workflow on push to main branch
 on:
   push:
     branches:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./  # Or './dist' if you have a build folder
+          publish_branch: gh-pages    # Branch for GitHub Pages
+          publish_dir: ./             # Folder to deploy (root)
+          force_orphan: true          # Creates branch if it doesn't exist
+          commit_message: "Deploy static site from GitHub Actions"
