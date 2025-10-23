@@ -1,94 +1,83 @@
 name: Static Site CI/CD to GitHub Pages
 
-# 1. Trigger: Run on pushes to the 'main' branch and on pull requests
+# 1. Configuration: Set the directory where your package.json, code, etc. lives
+# 💡 IMPORTANT: CHANGE THIS TO YOUR ACTUAL SUBFOLDER NAME (e.g., 'frontend', 'client')
+env:
+  PROJECT_ROOT: YOUR_PROJECT_FOLDER 
+  BUILD_OUTPUT_DIR: dist
+  
+# 2. Trigger: Run on pushes to the 'main' branch and manually
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-  # Allows you to manually trigger the workflow from the GitHub UI
   workflow_dispatch:
 
-# Define the Jobs
+# --- CI Job: Linting, Testing, and Building (Verification Stage) ---
 jobs:
-  # ==========================================================
-  # 2. CI Job: Linting, Testing, and Building (Verification Stage)
-  # ==========================================================
   ci:
     runs-on: ubuntu-latest
     steps:
-      # 2.1. Checkout Code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2.2. Setup Node.js Environment (Required for JavaScript tools like npm)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 2.3. Install Dependencies (e.g., Linters, build tools)
+      # 3. FIX: Install dependencies 
+      # The 'working-directory' tells the runner where the package.json is.
       - name: Install dependencies
-        # This assumes you have a package.json file with dependencies
         run: npm install
+        working-directory: ${{ env.PROJECT_ROOT }}
 
-      # 2.4. Run Linting/Code Quality Check (If configured)
-      # This step ensures code style and quality. A failure stops the pipeline.
+      # 4. FIX: Run Linting (Optional)
       - name: Run Linting
-        # You must have a "lint" script defined in your package.json
-        run: npm run lint || true # Added '|| true' to allow linting to pass if you haven't set it up yet
+        run: npm run lint || true 
+        working-directory: ${{ env.PROJECT_ROOT }}
 
-      # 2.5. Run Tests (If configured)
-      # This step ensures the application functionality is correct.
+      # 5. FIX: Run Tests (Optional)
       - name: Run Tests
-        # You must have a "test" script defined in your package.json
-        run: npm test || true # Added '|| true' to allow testing to pass if you haven't set it up yet
+        run: npm test || true 
+        working-directory: ${{ env.PROJECT_ROOT }}
 
-      # 2.6. Build Step (If you use a bundler like Webpack/Vite/etc.)
-      # If your site is *purely* simple HTML, CSS, JS in the root, you can skip this and use '.' for the 'path' later.
+      # 6. FIX: Build Step (If you use a bundler)
       - name: Build project (if needed)
-        # Create a production build of the static files
         run: npm run build
-        # The output of the build (e.g., the 'dist' folder) will be uploaded in the next job
-
-  # ==========================================================
-  # 3. CD Job: Deployment to GitHub Pages
-  # ==========================================================
+        working-directory: ${{ env.PROJECT_ROOT }}
+        
+# ------------------------------------------------------------------
+# --- CD Job: Deployment to GitHub Pages ---
   deploy:
-    # 3.1. Dependency Connection: Only runs if the 'ci' job succeeds
+    # 7. Dependency Connection: Only runs if the 'ci' job succeeds
     needs: ci
     runs-on: ubuntu-latest
 
-    # 3.2. Permissions: Required for GitHub Pages deployment
     permissions:
-      pages: write      # For writing the deployment artifact
-      id-token: write   # For OIDC authentication with GitHub Pages
+      pages: write
+      id-token: write
 
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      # 3.3. Checkout Code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 3.4. Configure the Pages environment
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # 3.5. Upload Artifact
+      # 8. Upload Artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # IMPORTANT: Specify the directory containing your deployable static files.
-          # Use 'dist' if you ran a build step (npm run build).
-          # Use '.' (the repository root) if your site is simple static files and has no build step.
-          path: './dist' 
+          # 🔑 CRITICAL PATH: The path must point to the folder *inside* the project folder 
+          # that contains the final static files (e.g., frontend/dist)
+          path: ${{ env.PROJECT_ROOT }}/${{ env.BUILD_OUTPUT_DIR }} 
 
-      # 3.6. Deploy to GitHub Pages
+      # 9. Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
