@@ -2,36 +2,33 @@ name: CI/CD Pipeline - Build and Deploy
 
 on:
   push:
-    # Trigger on pushes to the main branch
     branches:
-      - main
+      - main # Triggers on push to the main branch
 
-# Define environment variables
+# Define global environment variables
 env:
-  # GitHub Container Registry (GHCR)
   REGISTRY: ghcr.io
-  # The tag used for the image
+  # Use a clear tag based on your app name
   DOCKER_IMAGE_TAG: aroy-web-app:latest 
-  # Note: The 'aroy-web-app' name is derived from your container name
+  # Set the remote deployment directory once
+  REMOTE_DIR: /var/www/aroy-app/
 
 jobs:
   # ----------------------------------------------------------------------
-  # 1. CI Job: Build and Push Docker Image to GHCR
+  # 1. CI Job: Build and Push Docker Image
   # ----------------------------------------------------------------------
   build-and-push:
     runs-on: ubuntu-latest
     
-    # Permissions required to read code and write to the package registry
     permissions:
       contents: read
-      packages: write
+      packages: write # Required to push to GHCR
       
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        # 💡 FIX: Set up Buildx, which is required by the push action
         uses: docker/setup-buildx-action@v3 
 
       - name: Log in to GitHub Container Registry
@@ -39,59 +36,79 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }} # Use default GitHub token
 
       - name: Build and Push Docker image
-        # 🚀 FIX: Corrected action name from 'build-and-push-action' to 'build-push-action'
+        # ✅ FIX: Using the correct action name: 'build-push-action'
         uses: docker/build-push-action@v5 
         with:
-          context: . # Uses the Dockerfile in the root of the repo
+          context: . 
           push: true
-          # Full image path: ghcr.io/<owner>/<repo>:<tag>
+          # Define the full tag path
           tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_TAG }}
-          # Enable caching to speed up subsequent builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   # ----------------------------------------------------------------------
-  # 2. CD Job: Deploy to Remote Server via SSH
+  # 2. CD Job: Deploy to Remote Server
   # ----------------------------------------------------------------------
   deploy:
-    # This job only runs after the 'build-and-push' job is successful
     needs: build-and-push 
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
-        # Use a reliable SSH action
+      - name: Checkout repository (Needed to copy docker-compose.yml)
+        uses: actions/checkout@v4
+      
+      # Step A: Ensure the deployment directory exists on the remote server
+      - name: Prepare Remote Deployment Directory
         uses: appleboy/ssh-action@v1.0.0
         with:
-          # Use GitHub Secrets for secure connection information
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22 # Change if your SSH port is different
-          
-          # Commands to execute on the remote server
           script: |
-            # Set the deployment path on your server
-            REMOTE_DIR=/var/www/aroy-app/
-            mkdir -p $REMOTE_DIR
-            cd $REMOTE_DIR
+            # Create the target directory if it doesn't exist
+            mkdir -p ${{ env.REMOTE_DIR }}
             
-            # Log in to GHCR on the remote server using a Personal Access Token
-            # This token must have the 'read:packages' scope.
+      # Step B: Copy the docker-compose.yml file to the remote server
+      - name: Copy docker-compose.yml to remote server
+        # This companion action uses SCP to transfer files
+        uses: appleboy/scp-action@v0.1.7 
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: 'docker-compose.yml' # The file in your repo root
+          target: ${{ env.REMOTE_DIR }} # The target directory on the remote server
+          
+      # Step C: Execute Deployment Commands via SSH
+      - name: Run Deployment Script via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          
+          # This script will run on the remote server
+          script: |
+            # Move to the directory containing the docker-compose.yml
+            cd ${{ env.REMOTE_DIR }}
+            
+            # Log in to GHCR (required to pull the private image)
+            # ⚠️ Ensure GHCR_PAT is a valid Personal Access Token with 'read:packages' scope
             echo "${{ secrets.GHCR_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
             
             # Define the full image path
             IMAGE_PATH=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_TAG }}
 
+            echo "Pulling image: $IMAGE_PATH"
             # Pull the newly built image
             docker pull $IMAGE_PATH
-
-            # Restart the containers using the existing docker-compose.yml file
-            # This assumes you have copied your docker-compose.yml to $REMOTE_DIR 
-            # and updated it to use the full image path (IMAGE_PATH).
+            
+            # Restart the containers using the docker-compose file in the current directory
+            # 'up -d --force-recreate' ensures the new image is used
             docker-compose up -d --force-recreate
             
-            echo "Deployment successful."
+            echo "Deployment successful on remote server."
