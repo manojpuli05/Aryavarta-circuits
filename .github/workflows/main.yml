@@ -17,15 +17,9 @@ jobs:
         with:
           fetch-depth: 0  # Important for GitHub Pages
 
-      # Step 2: Set up Node.js (optional if using tools, not needed for plain HTML/CSS/JS)
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v3
-      #   with:
-      #     node-version: '18'
-
-      # Step 3: Deploy to GitHub Pages
+      # Step 2: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v7
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./   # Your website root folder
