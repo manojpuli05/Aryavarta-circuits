@@ -16,7 +16,7 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.PAT_TOKEN }}  # Use PAT instead of GITHUB_TOKEN
+          github_token: ${{ secrets.PAT_TOKEN }}  # must match secret name
           publish_branch: gh-pages
           publish_dir: ./                        # folder containing index.html
           force_orphan: true
