@@ -20,7 +20,7 @@ jobs:
     
     permissions:
       contents: read
-      packages: write # Required to push to GHCR
+      packages: write
       
     steps:
       - name: Checkout repository
@@ -52,33 +52,42 @@ jobs:
     needs: build-and-push 
     runs-on: ubuntu-latest
     
-    # 💡 ADDED: Explicitly define environment (optional but helpful for secrets access)
-    # If you have an Environment configured in GitHub Settings, use the name here:
-    # environment: production
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout repository (Needed to copy docker-compose.yml)
         uses: actions/checkout@v4
       
+      # 💡 FIX FOR 'missing server host': Map secrets to explicit environment variables
+      # This ensures the host, username, and key are reliably accessible.
+      - name: Set SSH Environment Variables
+        shell: bash
+        run: |
+          echo "SSH_HOST_ENV=${{ secrets.SSH_HOST }}" >> $GITHUB_ENV
+          echo "SSH_USERNAME_ENV=${{ secrets.SSH_USERNAME }}" >> $GITHUB_ENV
+          echo "SSH_PRIVATE_KEY_ENV=${{ secrets.SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+          
       # Step A: Ensure the deployment directory exists on the remote server
       - name: Prepare Remote Deployment Directory
         uses: appleboy/ssh-action@v1.0.0
         with:
-          # Ensure ${{ secrets.SSH_HOST }} is correctly defined in GitHub repository secrets
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Using the reliable environment variables
+          host: ${{ env.SSH_HOST_ENV }}
+          username: ${{ env.SSH_USERNAME_ENV }}
+          key: ${{ env.SSH_PRIVATE_KEY_ENV }}
           script: |
-            # Create the target directory if it doesn't exist
             mkdir -p ${{ env.REMOTE_DIR }}
             
       # Step B: Copy the docker-compose.yml file to the remote server
       - name: Copy docker-compose.yml to remote server
         uses: appleboy/scp-action@v0.1.7 
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Using the reliable environment variables
+          host: ${{ env.SSH_HOST_ENV }}
+          username: ${{ env.SSH_USERNAME_ENV }}
+          key: ${{ env.SSH_PRIVATE_KEY_ENV }}
           source: 'docker-compose.yml' 
           target: ${{ env.REMOTE_DIR }}
           
@@ -86,17 +95,17 @@ jobs:
       - name: Run Deployment Script via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Using the reliable environment variables
+          host: ${{ env.SSH_HOST_ENV }}
+          username: ${{ env.SSH_USERNAME_ENV }}
+          key: ${{ env.SSH_PRIVATE_KEY_ENV }}
           port: 22
           
-          # This script will run on the remote server
           script: |
             # 1. Move to the directory containing the docker-compose.yml
             cd ${{ env.REMOTE_DIR }}
             
-            # 2. Log in to GHCR
+            # 2. Log in to GHCR 
             echo "${{ secrets.GHCR_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
             
             # 3. Define the full image path
