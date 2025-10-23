@@ -10,15 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}  # Use built-in token
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: ./                # folder containing index.html
+          publish_dir: ./
           force_orphan: true
