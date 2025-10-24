@@ -1,10 +1,10 @@
-# docker-compose.yml (updated)
 version: "3.8"
+
 services:
   web-app:
+    build: . # Build image from Dockerfile in current directory
     image: my-static-web-app:latest
     container_name: aroy-web-container
     ports:
-      # CHANGED HOST PORT TO 8081
-      - "8081:80"
+      - "4000:80" # Host port 4000 → Container port 80
     restart: always
