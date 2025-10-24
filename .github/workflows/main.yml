@@ -1,4 +1,4 @@
-name: 🚀 Deploy Aryavarta-Circuit to GitHub Pages
+name: Deploy Aryavarta-Circuit to GitHub Pages
 
 on:
   push:
