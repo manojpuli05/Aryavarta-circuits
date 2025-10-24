@@ -1,0 +1,36 @@
+name: 🚀 Deploy Aryavarta-Circuit to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # Run pipeline on pushes to main branch
+
+permissions:
+  contents: write  # Allow the workflow to push to gh-pages branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node (if you need it)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step 3: Build project (skip if static HTML/CSS)
+      - name: Build project
+        run: |
+          echo "No build step needed for static HTML site."
+
+      # Step 4: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .   # folder where your index.html lives
